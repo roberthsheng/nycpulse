@@ -1,0 +1,11 @@
+[build]
+target = "index.html"
+dist = "dist"
+
+[watch]
+ignore = ["node_modules"]
+
+[[hooks]]
+stage = "build"
+command = "npx"
+command_arguments = ["tailwindcss", "-i", "./index.scss", "-o", "./styles/output.css"]

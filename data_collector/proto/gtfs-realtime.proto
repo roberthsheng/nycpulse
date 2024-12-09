@@ -1,0 +1,198 @@
+// Protocol buffer definition for GTFS-realtime transit data
+// 
+// This file defines the protocol buffer messages used to represent real-time transit data
+// following the GTFS-realtime specification (https://gtfs.org/realtime/reference/).
+//
+// The messages defined here allow transit agencies to provide real-time updates about their
+// fleet, including:
+// - Trip updates (delays, cancellations, changed routes)
+// - Vehicle positions (location, speed, occupancy)
+// - Service alerts (delays, detours, special notices)
+//
+// The data model follows a hierarchical structure:
+// - FeedMessage: Top-level container for the feed
+// - FeedEntity: Individual records within the feed
+// - Specialized messages for different types of updates (TripUpdate, VehiclePosition, Alert)
+
+syntax = "proto2";
+
+package transit_realtime;
+
+// Top-level message containing a real-time transit data feed
+message FeedMessage {
+    // Header information for this feed
+    required FeedHeader header = 1;
+    // Collection of updates contained in this feed
+    repeated FeedEntity entity = 2;
+}
+
+// Header information for the feed
+message FeedHeader {
+    // Version of the GTFS-Realtime specification
+    required string version = 1;
+    // Timestamp when the content was generated
+    optional uint64 timestamp = 2;
+    // Determines whether this is a full or incremental update
+    optional bool incrementality = 3 [default = false];
+}
+
+// A real-time update entity in the feed
+message FeedEntity {
+    // Unique identifier for this entity
+    required string id = 1;
+    // Flag to mark entity as no longer valid
+    optional bool is_deleted = 2 [default = false];
+    // Update about a trip's timing/schedule
+    optional TripUpdate trip_update = 3;
+    // Real-time position of a vehicle
+    optional VehiclePosition vehicle = 4;
+    // Service alert or notification
+    optional Alert alert = 5;
+}
+
+// Real-time update for a trip's schedule
+message TripUpdate {
+    // Trip being modified
+    required TripDescriptor trip = 1;
+    // Vehicle performing the trip
+    optional VehicleDescriptor vehicle = 3;
+    // Updates to stop arrival/departure times
+    repeated StopTimeUpdate stop_time_update = 2;
+    // When this update was generated
+    optional uint64 timestamp = 4;
+}
+
+// Timing update for a specific stop along a trip
+message StopTimeUpdate {
+    // Sequence of the stop within the trip
+    optional uint32 stop_sequence = 1;
+    // Unique identifier of the stop
+    optional string stop_id = 4;
+    // Predicted arrival event
+    optional StopTimeEvent arrival = 2;
+    // Predicted departure event
+    optional StopTimeEvent departure = 3;
+}
+
+// Timing information for a stop arrival or departure
+message StopTimeEvent {
+    // Delay from scheduled time in seconds
+    optional int32 delay = 1;
+    // Absolute time of the event
+    optional int64 time = 2;
+    // Uncertainty of prediction in seconds
+    optional int32 uncertainty = 3;
+}
+
+// Information identifying a specific trip
+message TripDescriptor {
+    // Internal system identifier for the trip
+    optional string trip_id = 1;
+    // Identifier for the route
+    optional string route_id = 5;
+    // Scheduled start time
+    optional string start_time = 2;
+    // Service date
+    optional string start_date = 3;
+    // Relationship to the scheduled trip
+    optional int32 schedule_relationship = 4;
+}
+
+// Information about a transit vehicle
+message VehicleDescriptor {
+    // Internal system identifier
+    optional string id = 1;
+    // User visible label (e.g. train number)
+    optional string label = 2;
+    // Vehicle registration plate
+    optional string license_plate = 3;
+}
+
+// Service alert or condition information
+message Alert {
+    // Time ranges when alert is active
+    repeated TimeRange active_period = 1;
+    // Entities affected by this alert
+    repeated EntitySelector informed_entity = 5;
+    // Types of effects on service
+    enum Effect {
+        NO_SERVICE = 1;
+        REDUCED_SERVICE = 2;
+        SIGNIFICANT_DELAYS = 3;
+        DETOUR = 4;
+        ADDITIONAL_SERVICE = 5;
+        MODIFIED_SERVICE = 6;
+        OTHER_EFFECT = 7;
+        UNKNOWN_EFFECT = 8;
+        STOP_MOVED = 9;
+        NO_EFFECT = 10;
+    }
+    // Effect of this alert on service
+    optional Effect effect = 6;
+    // URL for additional information
+    optional string url = 8;
+    // Alert header text
+    optional string header_text = 10;
+    // Detailed description text
+    optional string description_text = 11;
+}
+
+// Time range when an alert is active
+message TimeRange {
+    // Start time
+    optional uint64 start = 1;
+    // End time
+    optional uint64 end = 2;
+}
+
+// Selector for entities affected by an alert
+message EntitySelector {
+    // Identifier for the transit agency
+    optional string agency_id = 1;
+    // Identifier for the route
+    optional string route_id = 2;
+    // Type of transit route
+    optional int32 route_type = 3;
+    // Specific trip affected
+    optional TripDescriptor trip = 4;
+    // Specific stop affected
+    optional string stop_id = 5;
+}
+
+// Geographic position information
+message Position {
+    // Degrees North, in the WGS-84 coordinate system
+    required float latitude = 1;
+    // Degrees East, in the WGS-84 coordinate system
+    required float longitude = 2;
+    // Bearing in degrees, clockwise from North
+    optional float bearing = 3;
+    // Distance traveled since route start
+    optional double odometer = 4;
+    // Momentary speed measured in meters per second
+    optional float speed = 5;
+}
+
+// Real-time position and status of a transit vehicle
+message VehiclePosition {
+    // Trip this vehicle is serving
+    optional TripDescriptor trip = 1;
+    // Information about this vehicle
+    optional VehicleDescriptor vehicle = 8;
+    // Current position of vehicle
+    optional Position position = 2;
+    // Index of current stop along trip
+    optional uint32 current_stop_sequence = 3;
+    // Identifier of current stop
+    optional string stop_id = 7;
+    // Status of vehicle relative to current stop
+    enum VehicleStopStatus {
+        INCOMING_AT = 0;
+        STOPPED_AT = 1;
+        IN_TRANSIT_TO = 2;
+    }
+    // Current status at/between stops
+    optional VehicleStopStatus current_status = 4 [default = IN_TRANSIT_TO];
+    // Moment at which vehicle position was measured
+    optional uint64 timestamp = 5;
+}

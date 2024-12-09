@@ -1,0 +1,4 @@
+# root/Cargo.toml
+[workspace]
+resolver = "2"
+members = ["backend", "frontend", "common", "data_collector"]

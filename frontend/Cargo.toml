@@ -1,0 +1,39 @@
+# frontend/Cargo.toml
+[package]
+name = "nyc-pulse-frontend"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "nyc-pulse-frontend"
+path = "src/main.rs"
+
+[dependencies]
+yew = { version = "0.20", features = ["csr"] }
+nyc-pulse-common = { path = "../common" }
+gloo-net = "0.4"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+    "HtmlElement",
+    "HtmlLinkElement",
+    "MouseEvent",
+    "Window",
+    "Document",
+    "Element",
+    "DomRect",
+    "console",
+    "HtmlScriptElement",
+    "HtmlImageElement",
+    "CssStyleDeclaration",
+] }
+js-sys = "0.3"
+gloo-timers = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde-wasm-bindgen = "0.6"
+parking_lot = "0.12.3"
+once_cell = "1.20.2"
