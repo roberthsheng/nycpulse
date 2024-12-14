@@ -92,6 +92,20 @@
             background-color: rgba(39, 39, 42, 0.8) !important;
         }
 
+        .mapboxgl-ctrl-3d {
+            width: 29px;
+            height: 29px;
+            background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 2L2 7L12 12L22 7L12 2Z' stroke='rgb(244, 244, 245)' stroke-width='2'/%3E%3Cpath d='M2 17L12 22L22 17' stroke='rgb(244, 244, 245)' stroke-width='2'/%3E%3Cpath d='M2 12L12 17L22 12' stroke='rgb(244, 244, 245)' stroke-width='2'/%3E%3C/svg%3E");
+            background-size: 20px;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+        }
+
+        .mapboxgl-ctrl-3d.active {
+            background-color: rgba(39, 39, 42, 0.8) !important;
+        }
+
         /* Layout Utilities
          * Classes for controlling element dimensions and layout
          */
@@ -365,14 +379,14 @@
             }
         }
     </style>
-<link rel="modulepreload" href="/nyc-pulse-frontend-e2a3eff8ac2eca24.js" crossorigin=anonymous integrity="sha384-XaC6h4F5tLv3nRJkBIdDdDauQDSPrujWFPQPH6PlBZyN2cJCG1Mcl47fAKkGhgpc"><link rel="preload" href="/nyc-pulse-frontend-e2a3eff8ac2eca24_bg.wasm" crossorigin=anonymous integrity="sha384-MSG83CjkIB8/7u0PC64VH11t5oVht/0xy5hnw7uQvGP7qUuv4QOlrl4WmhjP186t" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="/nyc-pulse-frontend-2cc1cd5cfedc95ef.js" crossorigin=anonymous integrity="sha384-q564A7yHbkWTcOIE66e43g0x9kbm5MxG+wWa4hbCEHAY5DyKULUIDJt1ZpGeaUKL"><link rel="preload" href="/nyc-pulse-frontend-2cc1cd5cfedc95ef_bg.wasm" crossorigin=anonymous integrity="sha384-6AVUZqO6yuduXI8odxhgHzmT0OD9BTllrnnE5PpoA593BJFj/UB3+VNyOvzXioMS" as="fetch" type="application/wasm"></head>
 
 <body>
     <div id="app"></div>
 
-<script type="module" nonce="1tu3yqqZCf/PfrOfF27rfA==">
-import init, * as bindings from '/nyc-pulse-frontend-e2a3eff8ac2eca24.js';
-const wasm = await init({ module_or_path: '/nyc-pulse-frontend-e2a3eff8ac2eca24_bg.wasm' });
+<script type="module" nonce="82mvCsJP7MHNWuZLq5zIhQ==">
+import init, * as bindings from '/nyc-pulse-frontend-2cc1cd5cfedc95ef.js';
+const wasm = await init({ module_or_path: '/nyc-pulse-frontend-2cc1cd5cfedc95ef_bg.wasm' });
 
 
 window.wasmBindings = bindings;

@@ -57,6 +57,12 @@ extern "C" {
 
     #[wasm_bindgen(method)]
     fn remove(this: &Popup);
+
+    #[wasm_bindgen(js_namespace = mapboxgl)]
+    type NavigationControl;
+
+    #[wasm_bindgen(constructor, js_namespace = mapboxgl)]
+    fn new() -> NavigationControl;
 }
 
 /// Properties for the StatusPanel component
@@ -203,7 +209,7 @@ fn map_view(_props: &MapProps) -> Html {
                         .dyn_into::<HtmlScriptElement>()
                         .unwrap();
                     script.set_type("text/javascript");
-                    script.set_src("https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js");
+                    script.set_src("https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js");
 
                     let link = document
                         .create_element("link")
@@ -211,7 +217,7 @@ fn map_view(_props: &MapProps) -> Html {
                         .dyn_into::<web_sys::HtmlLinkElement>()
                         .unwrap();
                     link.set_rel("stylesheet");
-                    link.set_href("https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css");
+                    link.set_href("https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css");
                     document.head().unwrap().append_child(&link).unwrap();
 
                     // Store the init function in a variable to avoid FnOnce issues
@@ -237,14 +243,16 @@ fn map_view(_props: &MapProps) -> Html {
                                     &"mapbox://styles/mapbox/dark-v11".into(),
                                 )
                                 .unwrap();
-                                Reflect::set(&options, &"zoom".into(), &JsValue::from(12.0))
-                                    .unwrap();
+                                Reflect::set(&options, &"zoom".into(), &JsValue::from(12.0)).unwrap();
+                                Reflect::set(&options, &"pitch".into(), &JsValue::from(0.0)).unwrap();
+                                Reflect::set(&options, &"bearing".into(), &JsValue::from(0.0)).unwrap();
                                 Reflect::set(
                                     &options,
                                     &"accessToken".into(),
                                     &JsValue::from_str(MAPBOX_TOKEN),
                                 )
                                 .unwrap();
+                                Reflect::set(&options, &"projection".into(), &"mercator".into()).unwrap();
 
                                 if let Ok(mapboxgl) =
                                     js_sys::Reflect::get(&window, &"mapboxgl".into())
@@ -260,6 +268,99 @@ fn map_view(_props: &MapProps) -> Html {
                                                 &Array::of1(&options),
                                             ) {
                                                 let map_clone = map.clone();
+
+                                                // Add navigation controls
+                                                if let Ok(nav_control_class) = js_sys::Reflect::get(&mapboxgl, &"NavigationControl".into()) {
+                                                    if let Ok(nav_control_constructor) = nav_control_class.dyn_into::<js_sys::Function>() {
+                                                        if let Ok(nav_control) = js_sys::Reflect::construct(&nav_control_constructor, &Array::new()) {
+                                                            if let Ok(add_control) = js_sys::Reflect::get(&map, &"addControl".into()) {
+                                                                let add_control_func = add_control.dyn_into::<js_sys::Function>().unwrap();
+                                                                let _ = add_control_func.call1(&map, &nav_control);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+
+                                                // Add custom 3D toggle control
+                                                let custom_control = {
+                                                    let document = web_sys::window().unwrap().document().unwrap();
+                                                    let container = document.create_element("div").unwrap();
+                                                    container.set_class_name("mapboxgl-ctrl mapboxgl-ctrl-group");
+                                                    
+                                                    let button = document.create_element("button").unwrap();
+                                                    button.set_class_name("mapboxgl-ctrl-3d");
+                                                    button.set_attribute("type", "button").unwrap();
+                                                    button.set_attribute("aria-label", "Toggle 3D View").unwrap();
+                                                    
+                                                    let map_clone = map.clone();
+                                                    let onclick = Closure::wrap(Box::new(move || {
+                                                        console::log_1(&"3D toggle button clicked".into());
+                                                        
+                                                        // Get current pitch
+                                                        if let Ok(get_pitch) = Reflect::get(&map_clone, &"getPitch".into()) {
+                                                            if let Ok(pitch_func) = get_pitch.dyn_into::<js_sys::Function>() {
+                                                                if let Ok(current_pitch) = pitch_func.call0(&map_clone) {
+                                                                    let new_pitch = if current_pitch.as_f64().unwrap_or(0.0) > 0.0 { 0.0 } else { 45.0 };
+                                                                    let new_bearing = if new_pitch > 0.0 { -17.6 } else { 0.0 };
+                                                                    
+                                                                    // Set new pitch
+                                                                    if let Ok(set_pitch) = Reflect::get(&map_clone, &"setPitch".into()) {
+                                                                        let set_pitch_func = set_pitch.dyn_into::<js_sys::Function>().unwrap();
+                                                                        let _ = set_pitch_func.call1(&map_clone, &JsValue::from(new_pitch));
+                                                                    }
+                                                                    
+                                                                    // Set new bearing
+                                                                    if let Ok(set_bearing) = Reflect::get(&map_clone, &"setBearing".into()) {
+                                                                        let set_bearing_func = set_bearing.dyn_into::<js_sys::Function>().unwrap();
+                                                                        let _ = set_bearing_func.call1(&map_clone, &JsValue::from(new_bearing));
+                                                                    }
+                                                                    
+                                                                    // Toggle button active state
+                                                                    if let Some(button) = web_sys::window()
+                                                                        .unwrap()
+                                                                        .document()
+                                                                        .unwrap()
+                                                                        .query_selector(".mapboxgl-ctrl-3d")
+                                                                        .unwrap() 
+                                                                    {
+                                                                        let current_class = button.class_name();
+                                                                        button.set_class_name(
+                                                                            if current_class.contains("active") {
+                                                                                "mapboxgl-ctrl-3d"
+                                                                            } else {
+                                                                                "mapboxgl-ctrl-3d active"
+                                                                            }
+                                                                        );
+                                                                    }
+                                                                    
+                                                                    console::log_1(&format!("Changed to {} view", if new_pitch > 0.0 { "3D" } else { "2D" }).into());
+                                                                }
+                                                            }
+                                                        }
+                                                    }) as Box<dyn FnMut()>);
+                                                    
+                                                    button.add_event_listener_with_callback(
+                                                        "click",
+                                                        onclick.as_ref().unchecked_ref(),
+                                                    ).unwrap();
+                                                    onclick.forget();
+                                                    
+                                                    container.append_child(&button).unwrap();
+                                                    
+                                                    // Create and return the control object
+                                                    let control_obj = Object::new();
+                                                    Reflect::set(&control_obj, &"onAdd".into(), &Closure::wrap(Box::new(move || {
+                                                        container.clone()
+                                                    }) as Box<dyn FnMut() -> web_sys::Element>).into_js_value()).unwrap();
+                                                    
+                                                    control_obj
+                                                };
+
+                                                // Add the custom control to the map
+                                                if let Ok(add_control) = Reflect::get(&map, &"addControl".into()) {
+                                                    let add_control_func = add_control.dyn_into::<js_sys::Function>().unwrap();
+                                                    let _ = add_control_func.call1(&map, &custom_control);
+                                                }
 
                                                 // Create load handler
                                                 let load_handler = {
@@ -679,6 +780,90 @@ fn map_view(_props: &MapProps) -> Html {
                                                                 console::error_1(&format!("Failed to add train layer: {:?}", e).into());
                                                                 e
                                                             });
+                                                            }
+
+                                                            // Add 3D building layer
+                                                            if let Ok(get_style) = Reflect::get(&map, &"getStyle".into()) {
+                                                                if let Ok(get_style_fn) = get_style.dyn_into::<js_sys::Function>() {
+                                                                    if let Ok(style) = get_style_fn.call0(&map) {
+                                                                        if let Ok(layers) = Reflect::get(&style, &"layers".into()) {
+                                                                            if let Ok(layers_arr) = layers.dyn_into::<Array>() {
+                                                                                // Find the first symbol layer
+                                                                                let mut label_layer_id = String::from("");
+                                                                                for i in 0..layers_arr.length() {
+                                                                                    let layer_obj = layers_arr.get(i);
+                                                                                    if let (Ok(layer_type), Ok(layout)) = (
+                                                                                        Reflect::get(&layer_obj, &"type".into()),
+                                                                                        Reflect::get(&layer_obj, &"layout".into()),
+                                                                                    ) {
+                                                                                        if layer_type.as_string().unwrap_or_default() == "symbol"
+                                                                                            && Reflect::has(&layout, &"text-field".into()).unwrap_or(false)
+                                                                                        {
+                                                                                            if let Ok(id) = Reflect::get(&layer_obj, &"id".into()) {
+                                                                                                label_layer_id = id.as_string().unwrap_or_default();
+                                                                                                break;
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+
+                                                                                // Create 3D building layer
+                                                                                let building_layer = Object::new();
+                                                                                Reflect::set(&building_layer, &"id".into(), &"add-3d-buildings".into()).unwrap();
+                                                                                Reflect::set(&building_layer, &"source".into(), &"composite".into()).unwrap();
+                                                                                Reflect::set(&building_layer, &"source-layer".into(), &"building".into()).unwrap();
+                                                                                Reflect::set(&building_layer, &"type".into(), &"fill-extrusion".into()).unwrap();
+                                                                                Reflect::set(&building_layer, &"minzoom".into(), &15.0.into()).unwrap();
+
+                                                                                // Set filter
+                                                                                let filter = Array::new();
+                                                                                filter.push(&"==".into());
+                                                                                filter.push(&"extrude".into());
+                                                                                filter.push(&"true".into());
+                                                                                Reflect::set(&building_layer, &"filter".into(), &filter).unwrap();
+
+                                                                                // Set paint properties
+                                                                                let paint = Object::new();
+                                                                                Reflect::set(&paint, &"fill-extrusion-color".into(), &"#aaa".into()).unwrap();
+                                                                                Reflect::set(&paint, &"fill-extrusion-opacity".into(), &0.6.into()).unwrap();
+
+                                                                                // Create height expression
+                                                                                let height_expr = Array::new();
+                                                                                height_expr.push(&"interpolate".into());
+                                                                                height_expr.push(&Array::of1(&"linear".into()));
+                                                                                height_expr.push(&Array::of1(&"zoom".into()));
+                                                                                height_expr.push(&15.0.into());
+                                                                                height_expr.push(&0.0.into());
+                                                                                height_expr.push(&15.05.into());
+                                                                                height_expr.push(&Array::of2(&"get".into(), &"height".into()));
+                                                                                Reflect::set(&paint, &"fill-extrusion-height".into(), &height_expr).unwrap();
+
+                                                                                // Create base height expression
+                                                                                let base_expr = Array::new();
+                                                                                base_expr.push(&"interpolate".into());
+                                                                                base_expr.push(&Array::of1(&"linear".into()));
+                                                                                base_expr.push(&Array::of1(&"zoom".into()));
+                                                                                base_expr.push(&15.0.into());
+                                                                                base_expr.push(&0.0.into());
+                                                                                base_expr.push(&15.05.into());
+                                                                                base_expr.push(&Array::of2(&"get".into(), &"min_height".into()));
+                                                                                Reflect::set(&paint, &"fill-extrusion-base".into(), &base_expr).unwrap();
+
+                                                                                Reflect::set(&building_layer, &"paint".into(), &paint).unwrap();
+
+                                                                                // Add the layer before the first symbol layer
+                                                                                if let Ok(add_layer) = Reflect::get(&map, &"addLayer".into()) {
+                                                                                    let add_layer_fn = add_layer.dyn_into::<js_sys::Function>().unwrap();
+                                                                                    if !label_layer_id.is_empty() {
+                                                                                        let _ = add_layer_fn.call2(&map, &building_layer, &label_layer_id.into());
+                                                                                    } else {
+                                                                                        let _ = add_layer_fn.call1(&map, &building_layer);
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
                                                             }
 
                                                             let map_clone = map.clone();
